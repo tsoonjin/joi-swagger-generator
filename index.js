@@ -218,6 +218,29 @@ function applyLogic(json, apiList){
             corsApiGateway = getCorsApiGatewayIntegration(convertedPath, mapHeader, requestMap);
         }
         
+        const queryParameters = parameters.filter(param => param.in === 'query').map(param => param.name)
+        // Cache in staging and production by default
+        if (['staging', 'production'].includes(process.env.NODE_ENV)) {
+            apiGateway['cacheKeyParameters'] = queryParameters
+        }
+        const apiGatewayResponse = {
+    "DEFAULT_4XX": {
+      "responseParameters": {
+        "gatewayresponse.header.Access-Control-Allow-Origin": "'*'"
+      },
+      "responseTemplates": {
+        "application/json": "{\"message\":$context.error.messageString}"
+      }
+    },
+    "DEFAULT_5XX": {
+      "responseParameters": {
+        "gatewayresponse.header.Access-Control-Allow-Origin": "'*'"
+      },
+      "responseTemplates": {
+        "application/json": "{\"message\":$context.error.messageString}"
+      }
+    }
+  }
         paths[currentValue.type] = {
             summary: currentValue.name,
             consumes: [
@@ -229,7 +252,8 @@ function applyLogic(json, apiList){
             parameters,
             responses,
             deprecated,
-            "x-amazon-apigateway-integration": apiGateway
+            "x-amazon-apigateway-integration": apiGateway,
+            "x-amazon-apigateway-gateway-responses.gatewayResponse": apiGatewayResponse
         }
         
         if(!paths.options){
@@ -388,6 +412,7 @@ function getApiGatewayIntegration(currentValue, convertedPath, mapHeader, reques
         }
     }
 
+    console.log(requestPath)
     apiGateway["requestParameters"] = requestPath;
     apiGateway["responseParameters"] = mapHeader;
     return apiGateway;
