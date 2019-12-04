@@ -37,6 +37,24 @@ function applyLogic(json, apiList){
 
     json.paths = {};
     json.definitions = {};
+    json['x-amazon-apigateway-gateway-responses'] = {
+    "DEFAULT_4XX": {
+      "responseParameters": {
+        "gatewayresponse.header.Access-Control-Allow-Origin": "'*'"
+      },
+      "responseTemplates": {
+        "application/json": "{\"message\":$context.error.messageString}"
+      }
+    },
+    "DEFAULT_5XX": {
+      "responseParameters": {
+        "gatewayresponse.header.Access-Control-Allow-Origin": "'*'"
+      },
+      "responseTemplates": {
+        "application/json": "{\"message\":$context.error.messageString}"
+      }
+    }
+  }
     for(key in apiList) {
         const mapHeader = {};
         const requestMap = {};
@@ -218,29 +236,11 @@ function applyLogic(json, apiList){
             corsApiGateway = getCorsApiGatewayIntegration(convertedPath, mapHeader, requestMap);
         }
         
-        const queryParameters = parameters.filter(param => param.in === 'query').map(param => param.name)
+        const queryParameters = parameters.filter(param => param.in === 'query').map(param => `method.request.querystring.${param.name}`)
         // Cache in staging and production by default
         if (['staging', 'production'].includes(process.env.NODE_ENV)) {
             apiGateway['cacheKeyParameters'] = queryParameters
         }
-        const apiGatewayResponse = {
-    "DEFAULT_4XX": {
-      "responseParameters": {
-        "gatewayresponse.header.Access-Control-Allow-Origin": "'*'"
-      },
-      "responseTemplates": {
-        "application/json": "{\"message\":$context.error.messageString}"
-      }
-    },
-    "DEFAULT_5XX": {
-      "responseParameters": {
-        "gatewayresponse.header.Access-Control-Allow-Origin": "'*'"
-      },
-      "responseTemplates": {
-        "application/json": "{\"message\":$context.error.messageString}"
-      }
-    }
-  }
         paths[currentValue.type] = {
             summary: currentValue.name,
             consumes: [
@@ -252,8 +252,7 @@ function applyLogic(json, apiList){
             parameters,
             responses,
             deprecated,
-            "x-amazon-apigateway-integration": apiGateway,
-            "x-amazon-apigateway-gateway-responses.gatewayResponse": apiGatewayResponse
+            "x-amazon-apigateway-integration": apiGateway
         }
         
         if(!paths.options){
