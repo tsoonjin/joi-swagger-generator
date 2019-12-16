@@ -1,13 +1,13 @@
 {
   "name": "@astro-my/joi-swagger-generator",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "description": "generate swagger.json file from joi schema file",
   "keywords": [
     "swagger",
     "joi",
     "converter"
   ],
-  "homepage": "https://github.com/stephen1706/joi-swagger-generator",
+  "homepage": "https://github.com/tsoonjin/joi-swagger-generator",
   "license": "MIT",
   "scripts": {
     "start": "node index.js",
@@ -15,7 +15,7 @@
     "test-recursive": "joi-swagger-generator -r -v ./test/ -h ./test/header.json -o ./test/swagger.json",
     "help": "joi-swagger-generator --help"
   },
-  "author": "Stephen Adipradhana",
+  "author": "Tan Soon Jin",
   "preferGlobal": true,
   "main": "./index.js",
   "bin": {
@@ -24,7 +24,7 @@
   "dependencies": {
     "fs-extra": "^6.0.1",
     "glob": "^7.1.2",
-    "joi": "^13.4.0",
+    "joi": "^14.3.1",
     "joi-phone-number": "^2.0.9",
     "joi-to-swagger": "^3.0.0",
     "yargs": "^11.0.0"
