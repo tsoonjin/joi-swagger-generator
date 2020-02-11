@@ -17,7 +17,7 @@ const argv = require('yargs')
             .help('help')
             .example('joi-swagger-generator -r -v ./validators -h ./header.json -o ./swagger.json')
             .argv
-            
+
 const j2s = require('joi-to-swagger');
 const path = require('path');
 const fs = require('fs-extra');
@@ -59,7 +59,7 @@ function applyLogic(json, apiList){
         const mapHeader = {};
         const requestMap = {};
         const currentValue = apiList[key];
-    
+
         let paths;
         let convertedPath = path.join(basePath, currentValue.path);
         // const splitPath = convertedPath.split('/');
@@ -75,7 +75,7 @@ function applyLogic(json, apiList){
 
         if(argv.apiGatewayPath){
             const apiGatewayPath = path.join(argv.apiGatewayPath, convertedPath);
-            
+
             if(json.paths[apiGatewayPath]){
                 paths = json.paths[apiGatewayPath];
             } else {
@@ -90,7 +90,7 @@ function applyLogic(json, apiList){
                 json.paths[convertedPath] = paths;
             }
         }
-        
+
         let parameters = []
         //default response
         let responses = {
@@ -117,7 +117,7 @@ function applyLogic(json, apiList){
         if(currentValue.JoiSchema){
             if(currentValue.JoiSchema.headers){
                 const {swagger} = j2s(currentValue.JoiSchema.headers);
-        
+
                 for(headerKey in swagger.properties) {
                     parameters.push({
                         name: headerKey,
@@ -130,7 +130,7 @@ function applyLogic(json, apiList){
             }
             if(currentValue.JoiSchema.body){
                 const {swagger} = j2s(currentValue.JoiSchema.body);
-        
+
                 const modelName = `${currentValue.name.replace(/\s/g, "")}${currentValue.type.capitalize()}Body`;
                 json.definitions[modelName] = swagger;
                 parameters.push({
@@ -144,7 +144,7 @@ function applyLogic(json, apiList){
             }
             if(currentValue.JoiSchema.path){
                 const {swagger} = j2s(currentValue.JoiSchema.path);
-        
+
                 for(pathKey in swagger.properties) {
                     parameters.push({
                         name: pathKey,
@@ -156,7 +156,7 @@ function applyLogic(json, apiList){
             }
             if(currentValue.JoiSchema.params){
                 const {swagger} = j2s(currentValue.JoiSchema.params);
-        
+
                 for(pathKey in swagger.properties) {
                     parameters.push({
                         name: pathKey,
@@ -168,7 +168,7 @@ function applyLogic(json, apiList){
             }
             if(currentValue.JoiSchema.query){
                 const {swagger} = j2s(currentValue.JoiSchema.query);
-                
+
                 for(queryKey in swagger.properties) {
                     parameters.push({
                         name: queryKey,
@@ -181,26 +181,26 @@ function applyLogic(json, apiList){
             if(currentValue.JoiSchema.response){
                 responses = {};
                 const {swagger} = j2s(currentValue.JoiSchema.response);
-    
+
                 for(statusCode in swagger.properties) {
                     const modelName = `${currentValue.name.replace(/\s/g, "")}${currentValue.type.capitalize()}${statusCode}Response`;
                     json.definitions[modelName] = swagger.properties[statusCode].properties.body;
-    
+
                     const data = {
                         description: swagger.properties[statusCode].properties.description.enum[0],
                         schema: {
                             $ref: `#/definitions/${modelName}`
                         },
                     };
-    
+
                     if(swagger.properties[statusCode].properties.header){
                         data['headers'] = swagger.properties[statusCode].properties.header.properties;
-                    
+
                         for(headerName in swagger.properties[statusCode].properties.header.properties) {
                             mapHeader[`integration.response.header.${headerName}`] = `method.response.header.${headerName}`;
                         }
                     }
-                    
+
                     if(statusCode >= 200 && statusCode < 400){
                         if(!data.headers){
                             data.headers = {};
@@ -235,11 +235,12 @@ function applyLogic(json, apiList){
             apiGateway = getApiGatewayIntegration(currentValue, convertedPath, mapHeader, requestMap);
             corsApiGateway = getCorsApiGatewayIntegration(convertedPath, mapHeader, requestMap);
         }
-        
+
         const queryParameters = parameters.filter(param => param.in === 'query').map(param => `method.request.querystring.${param.name}`)
+        const pathParameters  = parameters.filter(param => param.in === 'path').map(param => `method.request.path.${param.name}`)
         // Cache in staging and production by default
         if (['staging', 'production'].includes(process.env.NODE_ENV)) {
-            apiGateway['cacheKeyParameters'] = queryParameters
+            apiGateway['cacheKeyParameters'] = [...queryParameters, ...pathParameters]
         }
         paths[currentValue.type] = {
             summary: currentValue.name,
@@ -254,7 +255,7 @@ function applyLogic(json, apiList){
             deprecated,
             "x-amazon-apigateway-integration": apiGateway
         }
-        
+
         if(!paths.options){
             paths['options'] = {
                 summary: 'CORS Support',
@@ -290,7 +291,6 @@ function applyLogic(json, apiList){
 
 if(argv.r){
     glob(path.join(validatorFile, "**/*.validator.js"), function (er, files) {
-        console.log(files);
         let requires = []
         files.forEach((value, index, array) => {
             requires.push(require(value))
@@ -307,7 +307,7 @@ if(argv.r){
                 return console.error(`Header file not found in ${headerFile}, please create header file first`);
             }
         }
-        
+
         let json = require(headerFile);
 
         const relativeOutputFile = argv.output;
@@ -315,9 +315,9 @@ if(argv.r){
             return console.error("Output file location is required");
         }
         const outputFile = path.resolve(relativeOutputFile);
-        
+
         json = applyLogic(json, requires)
-        
+
         fs.outputFile(outputFile, JSON.stringify(json, null, 4), function(err){
             if(err) {
                 console.error(err);
@@ -337,7 +337,7 @@ if(argv.r){
         }
     }
     const validator = require(validatorFile);
-    
+
     const relativeHeaderPath = argv.header;
     const headerFile = path.resolve(relativeHeaderPath);
     if(!fs.pathExistsSync(headerFile)){
@@ -349,7 +349,7 @@ if(argv.r){
             return console.error(`Header file not found in ${headerFile}, please create header file first`);
         }
     }
-    
+
     let json = require(headerFile);
 
     const relativeOutputFile = argv.output;
